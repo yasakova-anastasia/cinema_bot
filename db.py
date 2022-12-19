@@ -14,23 +14,20 @@ Session = sessionmaker(engine, future=True, expire_on_commit=False)
 Base = declarative_base()
 
 
-class User(Base):
+class User(Base):  # type: ignore
     __tablename__ = 'users'
-
     user_id = Column(Integer, primary_key=True)
 
 
-class Movie(Base):
+class Movie(Base):  # type: ignore
     __tablename__ = 'movies'
-
     movie_id = Column(Integer, primary_key=True)
     name = Column(String)
     year = Column(Integer)
 
 
-class History(Base):
+class History(Base):  # type: ignore
     __tablename__ = 'histories'
-
     request_id = Column(Integer, primary_key=True)
     user = Column(Integer, ForeignKey("users.user_id"))
     request = Column(String)

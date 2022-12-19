@@ -1,4 +1,3 @@
-import os
 import typing as tp
 from abc import ABC, abstractmethod
 
@@ -8,7 +7,7 @@ from bs4 import BeautifulSoup
 from creds import KINOPOISK_TOKEN
 
 
-def get_google_link(movie: str) -> tp.Optional[str]:
+def get_movie_link(movie: str) -> tp.Optional[str]:
     headers = {
         'Accept': '*/*',
         'Accept-Language': 'ru,rus,en-US,en;q=0.5',
@@ -17,7 +16,7 @@ def get_google_link(movie: str) -> tp.Optional[str]:
     }
 
     response = requests.get('https://www.google.com/search', headers=headers,
-        params={'q': f"{movie} смотреть онлайн"}).text
+                            params={'q': f"{movie} смотреть онлайн"}).text
     search = BeautifulSoup(response, 'html.parser').find(id='search')
     if search is None:
         return None
@@ -41,21 +40,22 @@ class Movie:
         self.link: str = "https://www.kinopoisk.ru/film/" + str(dict.get("filmId", ""))
 
     def get_movie_info(self) -> str:
-        link = get_google_link(f"{self.name} ({self.year})")
+        link = get_movie_link(f"{self.name} ({self.year})")
 
         movie_info = "".join([f"<b>{self.name} ({self.year})</b>\n\n",
-                        f"{self.description}\n\n",
-                        f"Страны: {', '.join(self.countries)}\n",
-                        f"Жанры: {', '.join(self.genres)}\n",
-                        f"Длительность: {self.length}\n",
-                        f"Рейтинг: {self.rating}\n",
-                        f"\nИнформацию можно найти тут: {self.link}\n",
-                        f"Смотреть {link}\n"])
+                              f"{self.description}\n\n",
+                              f"Страны: {', '.join(self.countries)}\n",
+                              f"Жанры: {', '.join(self.genres)}\n",
+                              f"Рейтинг: {self.rating}\n",
+                              f"Длительность: {self.length}\n",
+                              f"\nИнформацию можно найти тут: {self.link}\n",
+                              f"Посмотреть можно тут: {link}\n"])
 
         return movie_info
 
 
-async def get_response(url: str, params: dict["str", tp.Any], headers: dict[str, tp.Any]) -> tp.Optional[dict]:
+async def get_response(url: str, params: dict["str", tp.Any],
+                       headers: dict[str, tp.Any]) -> tp.Optional[dict[str, str]]:
     async with aiohttp.ClientSession() as session:
         try:
             async with session.get(url=url, params=params, headers=headers) as resp:
@@ -68,11 +68,11 @@ async def get_response(url: str, params: dict["str", tp.Any], headers: dict[str,
 
 class MovieAPI(ABC):
     @abstractmethod
-    def get_params(self, name: str) -> tuple[str, dict, dict]:
+    def get_params(self, name: str) -> tuple[str, dict[str, str], dict[str, str]]:
         pass
 
     @abstractmethod
-    def continue_response(self, req: tp.Optional[dict]):
+    def continue_response(self, req: tp.Optional[dict[str, str]]) -> None:
         pass
 
     async def get_result(self, name: str) -> tp.Optional[Movie]:
@@ -86,17 +86,14 @@ class MovieAPI(ABC):
 class KinopoiskAPI(MovieAPI):
     url = "https://kinopoiskapiunofficial.tech/api/v2.1/films/search-by-keyword"
 
-    def get_params(self, name: str) -> tuple[str, dict, dict]:
+    def get_params(self, name: str) -> tuple[str, dict[str, str], dict[str, str]]:
         return self.url, {"keyword": name}, {"X-API-KEY": KINOPOISK_TOKEN}
 
-    def continue_response(self, req: tp.Optional[dict]) -> tp.Optional[Movie]:
+    def continue_response(self, req: tp.Optional[dict[str, tp.Any]]) -> tp.Any:
         if req is None:
             return None
 
-        if 'films' not in req.keys():
-            return None
-
-        if not req['films']:
+        if not req.get("films"):
             return None
 
         return Movie(req['films'][0])
